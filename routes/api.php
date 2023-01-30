@@ -15,6 +15,7 @@ use App\Http\Controllers\SolarController;
 |
 */
 
+Route::post('register', [SolarController::class, 'register']);
 Route::post('login', [SolarController::class, 'login']);
 Route::get('logout', [SolarController::class, 'logout']);
-Route::get('getData', [SolarController::class, 'getData']);
+Route::get('getData', [SolarController::class, 'getData'])->middleware('jwt');

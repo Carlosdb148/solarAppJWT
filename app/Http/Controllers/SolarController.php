@@ -7,14 +7,17 @@ use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
-use Laravel\Passport\RefreshToken;
-use Laravel\Passport\Token;
+// use Laravel\Passport\RefreshToken;
+// use Laravel\Passport\Token;
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 
 class SolarController extends Controller
 {
     
     function __construct(){
-        $this->middleware('auth:api')->only(['logout', 'getData']);
+        $this->middleware('jwt', ['only' => ['data']]);
+        $this->middleware('auth:api')->only(['logout']);
     }
     
     /**
@@ -93,20 +96,32 @@ class SolarController extends Controller
         //
     }
     
+    function register(Request $request){
+        try{
+            User::create([
+                'name' => $request->name,    
+                'email' => $request->email,    
+                'password' => app('hash')->make($request->password),
+            ]);
+        }catch(\Exception $e){
+            return response()->json(['message' => 'User not created', 418]);
+        }
+        return response()->json(['message' => 'User created', 201]);
+    }
+    
+    
     function login(Request $request) {
         $credentials = request(['email', 'password']);
         if (!Auth::attempt($credentials)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
-        $user = Auth::user();//$request->user();
-        $tokenResult = $user->createToken('Access Token');
-        $token = $tokenResult->token;
-        $token->save();
-        return response()->json([
-            'access_token' => $tokenResult->accessToken,
-            'token_type' => 'Bearer',
-            'expires_at' => Carbon::parse($token->expires_at)->toDateTimeString()
-        ], 200);
+        $key = 'muy_privada'; //Clave para cifrar y descifrar el jwt
+            $payload = [
+                'user' => $request->input('email'),
+                'expiration_date' => Carbon::now()->addHour(),
+            ];
+            $jwt = JWT::encode($payload, $key, 'HS256');
+            return response()->json(['user' => $request->input('email'),'token' => $jwt]);
     }
     
     function logout(Request $request) {
@@ -162,7 +177,7 @@ class SolarController extends Controller
         ]);
         }
         
-        $degrees = 0 + (($now - $total1)/($total2 - $total1)) * (180 - 0);
+        $degrees = 180 + (($now - $total1)/($total2 - $total1)) * (0 - 180);
         
         $radians = $degrees * pi() / 180;
         
